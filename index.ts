@@ -11,7 +11,7 @@ if (!extArg || !address) {
 }
 
 const EXCLUDED_FOLDER_NAMES = ['.git', '.idea', 'node_modules', 'bin']
-const EXCLUDED_FILE_NAMES = ['TahlildadehMvc.csproj', 'package.json']
+const EXCLUDED_FILE_NAMES = ['TahlildadehMvc.csproj', 'package.json', 'BundleConfigold2.cs', 'bundleConfigold.cs', 'BundleConfigold.cs']
 const target_file_extentions = ['scss', 'css', 'js', 'cs', 'cshtml']
 
 try {
@@ -41,16 +41,20 @@ const target_files = await fg( `**/*.{${target_file_extentions.join(',')}}`, {
 
 
 let unusedFiles:string[] = []
+let filesChecked = 1;
 for (const lockedFile of lock_files) {
   const lockedFileName = path.basename(lockedFile)
   let foundReference = false
-  console.log(`🔎 Searching for references of "${lockedFileName}"`)
+  console.log(`🔎 (${filesChecked++}/${lock_files.length}) Searching for references of "${lockedFileName}"`)
 
 for (const targetFile of target_files) {
 
     const targetFileName = path.basename(targetFile)
+    if (targetFileName === lockedFileName) continue
+    if (EXCLUDED_FILE_NAMES.includes(targetFileName)) continue
+
     const content = fs.readFileSync(targetFile, 'utf-8')
-    let result = new RegExp(`\\b${lockedFileName}\\b`).test(content)
+    const result = new RegExp(`(".*?\\b${lockedFileName.replaceAll(".","\\.")}")|('.*?\\b${lockedFileName.replaceAll(".","\\.")}')`).test(content)
 
     if (result) {
       console.log(`- found reference of "${lockedFileName}" in "${targetFileName}"`)
