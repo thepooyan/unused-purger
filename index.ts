@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import fg from 'fast-glob'
 
 const address = process.argv[2]
 const extArg = process.argv[3]
@@ -9,9 +10,9 @@ if (!extArg || !address) {
   process.exit(1)
 }
 
-const EXCLUDED_FOLDER_NAMES = ['.git', '.idea', 'node_modules']
+const EXCLUDED_FOLDER_NAMES = ['.git', '.idea', 'node_modules', 'bin']
 const EXCLUDED_FILE_NAMES = ['TahlildadehMvc.csproj', 'package.json']
-const EXCLUDED_FILE_TYPES = ['png', 'csproj']
+const target_file_extentions = ['scss', 'css', 'js', 'cs', 'cshtml']
 
 try {
   process.chdir(address)
@@ -20,86 +21,49 @@ try {
   process.exit(1)
 }
 
-const searchDir = process.cwd()
+console.log(`Searching for ${extArg} files...`)
 
-type folan = {dir: string, ext?: string}
-
-const walkDir = ({dir, ext}: folan, callback: (fileFullPath: string) => boolean) => {
-  for (const fileName of fs.readdirSync(dir)) {
-    if (EXCLUDED_FOLDER_NAMES.includes(fileName)) continue
-
-    const fileFullPath = path.join(dir, fileName)
-    const stat = fs.statSync(fileFullPath)
-
-    if (stat.isDirectory()) {
-      walkDir({dir: fileFullPath, ext}, callback)
-    } else {
-      if (EXCLUDED_FILE_NAMES.includes(fileName)) continue
-      if (ext && !fileName.endsWith("." + ext)) continue
-
-      const shouldContinue = callback(fileFullPath)
-      if (!shouldContinue) break
-    }
-  }
-}
-
-// Walk that stops recursion immediately when callback returns false
-const walkDirStopEarly = ({dir, ext}: folan, callback: (fileFullPath: string) => boolean): boolean => {
-  for (const fileName of fs.readdirSync(dir)) {
-    if (EXCLUDED_FOLDER_NAMES.includes(fileName)) continue
-
-    const fileFullPath = path.join(dir, fileName)
-    const stat = fs.statSync(fileFullPath)
-
-    if (stat.isDirectory()) {
-      const shouldContinue = walkDirStopEarly({dir: fileFullPath, ext}, callback)
-      if (!shouldContinue) return false
-    } else {
-      if (EXCLUDED_FILE_NAMES.includes(fileName)) continue
-      if (ext && !fileName.endsWith("." + ext)) continue
-
-      const shouldContinue = callback(fileFullPath)
-      if (!shouldContinue) return false
-    }
-  }
-  return true
-}
-
-let unusedFiles: string[] = []
-
-walkDir({dir: searchDir, ext: extArg}, (fileFullPath: string) => {
-  const lookingFor = path.basename(fileFullPath)
-  console.log(`🔎 Searching for references of ${lookingFor}`)
-  let foundReference = false
-
-  walkDirStopEarly({dir: searchDir}, (innerFile) => {
-    if (innerFile === fileFullPath) return true
-    debugger
-    let typeExcluded = EXCLUDED_FILE_TYPES.reduce<boolean>((p,c) => {
-      return innerFile.endsWith("." + c) && p
-    }, false)
-    
-    if (typeExcluded) return false
-    const content = fs.readFileSync(innerFile, 'utf-8')
-    if (new RegExp(`\\b${lookingFor}\\b`).test(content)) {
-      console.log(`- found reference of "${lookingFor}" in "${path.basename(innerFile)}"`)
-      foundReference = true
-      return false
-    }
-    return true
-  })
-
-  if (!foundReference) {
-    console.log(`🚫 Unused: ${lookingFor}`)
-    unusedFiles.push(lookingFor)
-  }
-
-  return true
+const lock_files = await fg( `**/*.${extArg}`, {
+  cwd: process.cwd(),
+  ignore: EXCLUDED_FOLDER_NAMES,
+  onlyFiles: true,
+  absolute: true
 })
 
-if (unusedFiles.length) {
-  console.log('\n📦 List of unused files:')
-  unusedFiles.forEach(u => console.log(u))
-} else {
-  console.log(`✅ No unused ${extArg} files found.`)
+console.log(`Fount ${lock_files.length} ${extArg} files`)
+
+const target_files = await fg( `**/*.{${target_file_extentions.join(',')}}`, {
+  cwd: process.cwd(),
+  ignore: EXCLUDED_FOLDER_NAMES,
+  onlyFiles: true,
+  absolute: true
+})
+
+
+let unusedFiles:string[] = []
+for (const lockedFile of lock_files) {
+  const lockedFileName = path.basename(lockedFile)
+  let foundReference = false
+  console.log(`🔎 Searching for references of "${lockedFileName}"`)
+
+for (const targetFile of target_files) {
+
+    const targetFileName = path.basename(targetFile)
+    const content = fs.readFileSync(targetFile, 'utf-8')
+    let result = new RegExp(`\\b${lockedFileName}\\b`).test(content)
+
+    if (result) {
+      console.log(`- found reference of "${lockedFileName}" in "${targetFileName}"`)
+      foundReference = true
+      break
+    }
+  }
+  if (!foundReference) {
+    console.log(`🚫 Unused: ${lockedFile}`)
+    unusedFiles.push(lockedFileName)
+  }
 }
+
+unusedFiles.forEach(u => {
+  console.log(`🚫 Unused: ${u}`)
+})
