@@ -1,5 +1,3 @@
-#!/usr/bin/env ts-node
-
 import fs from 'fs'
 import path from 'path'
 
@@ -96,5 +94,3 @@ if (unusedFiles.length) {
 } else {
   console.log(`✅ No unused ${extArg} files found.`)
 }
-
-
