@@ -1,15 +1,24 @@
 import fs from 'fs'
 import path from 'path'
 
-const extArg = process.argv[2]
-if (!extArg) {
-  console.error('Usage: ts-node find-unused-files.ts <extension>')
+const address = process.argv[2]
+const extArg = process.argv[3]
+
+if (!extArg || !address) {
+  console.error('Usage: ts-node find-unused-files.Ts <address> <extension>')
   process.exit(1)
 }
 
 const EXCLUDED_FOLDER_NAMES = ['.git', '.idea', 'node_modules']
 const EXCLUDED_FILE_NAMES = ['TahlildadehMvc.csproj', 'package.json']
 const EXCLUDED_FILE_TYPES = ['png', 'csproj']
+
+try {
+  process.chdir(address)
+} catch(_) {
+  console.error(`Cannot find the folder specified: "${address}"`)
+  process.exit(1)
+}
 
 const searchDir = process.cwd()
 
