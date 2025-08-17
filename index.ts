@@ -93,7 +93,7 @@ for (const targetFile of target_files) {
       const checkAgain = new RegExp(`(".*?\\b${lockedFileName.replaceAll(".","\\.")}")|('.*?\\b${lockedFileName.replaceAll(".","\\.")}')`).test(content)
       if (checkAgain) {
         console.log(`- found reference of "${lockedFileName}" in "${targetFileName}"`)
-        saveToLogs(`- found reference of "${lockedFileName}" in "${targetFileName}"`)
+        saveToLogs(`"${lockedFile}" => "${targetFile}"`)
         foundReference = true
         break
       }
@@ -102,7 +102,7 @@ for (const targetFile of target_files) {
   if (!foundReference) {
     console.log(`🚫 Unused: ${lockedFile}`)
     unusedFiles.push(lockedFileName)
-    saveToUnused(lockedFileName)
+    saveToUnused(lockedFile)
   }
 }
 
