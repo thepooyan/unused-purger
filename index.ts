@@ -21,14 +21,31 @@ try {
   process.exit(1)
 }
 
-const fileName = `Ununsed_${extArg}_files.txt`
-const saveToFile = (str: string) => {
-  fs.appendFile("./unused logs/"+fileName, [str, "\n"].join(), (err) => {
+const saveToFile = (str: string, filename: string) => {
+  fs.appendFile("./unused logs/"+ filename, [str, "\n"].join(), (err) => {
     if (err) {
       console.error('Error writing file:', err);
     } 
   });
 }
+
+const unusedLogFileName = () => `Ununsed_${extArg}_files.txt`
+const logFileName = () => `${extArg}_logs.txt`
+
+// const loadUnused = () => {
+//   const unusedLogs = fs.readFileSync(`./unused logs/${unusedLogFileName()}`, "utf-8")
+//   const logs = fs.readFileSync(`./unused logs/${logFileName()}`, "utf-8")
+
+//   const isInLogs = (fileName: string) => unusedLogs.includes(fileName) | logs.includes
+
+//   return {isInLogs}
+// }
+
+// const {isInLogs} = loadUnused()
+
+const saveToUnused = (str: string) => saveToFile(str, unusedLogFileName())
+const saveToLogs = (str: string) => saveToFile(str, logFileName())
+
 console.log(`Searching for ${extArg} files...`)
 
 const lock_files = await fg( `**/*.${extArg}`, {
@@ -51,9 +68,17 @@ const target_files = await fg( `**/*.{${target_file_extentions.join(',')}}`, {
 let unusedFiles:string[] = []
 let filesChecked = 1;
 for (const lockedFile of lock_files) {
-  const lockedFileName = path.basename(lockedFile)
+  let lockedFileName = path.basename(lockedFile)
+  if (extArg === "scss") {
+    lockedFileName = path.basename(lockedFileName, ".scss")
+    console.log(lockedFileName)
+  }
   let foundReference = false
   console.log(`🔎 (${filesChecked++}/${lock_files.length}) Searching for references of "${lockedFileName}"`)
+  // if (isInLogs(lockedFileName)) {
+  //   console.log(`already checked for: ${lockedFileName}`)
+  //   continue
+  // }
 
 for (const targetFile of target_files) {
 
@@ -68,6 +93,7 @@ for (const targetFile of target_files) {
       const checkAgain = new RegExp(`(".*?\\b${lockedFileName.replaceAll(".","\\.")}")|('.*?\\b${lockedFileName.replaceAll(".","\\.")}')`).test(content)
       if (checkAgain) {
         console.log(`- found reference of "${lockedFileName}" in "${targetFileName}"`)
+        saveToLogs(`- found reference of "${lockedFileName}" in "${targetFileName}"`)
         foundReference = true
         break
       }
@@ -76,7 +102,7 @@ for (const targetFile of target_files) {
   if (!foundReference) {
     console.log(`🚫 Unused: ${lockedFile}`)
     unusedFiles.push(lockedFileName)
-    saveToFile(lockedFileName)
+    saveToUnused(lockedFileName)
   }
 }
 
