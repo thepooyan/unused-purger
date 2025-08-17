@@ -69,14 +69,20 @@ let unusedFiles:string[] = []
 let filesChecked = 1;
 for (const lockedFile of lock_files) {
   let lockedFileName = path.basename(lockedFile)
+  let isModule = false
   if (extArg === "scss") {
     lockedFileName = path.basename(lockedFileName, ".scss")
-    if (lockedFileName.startsWith("_"))
+    if (lockedFileName.startsWith("_")) {
         lockedFileName = lockedFileName.substring(1)
+        isModule = true
+    }
+    else {
+        lockedFileName += ".css"
+    }
   }
   
   let foundReference = false
-  console.log(`🔎 (${filesChecked++}/${lock_files.length}) Searching for references of "${lockedFileName}"`)
+  console.log(`🔎 (${filesChecked++}/${lock_files.length}) Searching for references of "${lockedFileName}" ${isModule && "(module)"}`)
   // if (isInLogs(lockedFileName)) {
   //   console.log(`already checked for: ${lockedFileName}`)
   //   continue
@@ -84,18 +90,28 @@ for (const lockedFile of lock_files) {
 
 for (const targetFile of target_files) {
 
-    const targetFileName = path.basename(targetFile)
+    let targetFileName = path.basename(targetFile)
+    let checkFileName = path.basename(targetFile, ".scss")
+    if (isModule) checkFileName = checkFileName.substring(1)
+    if (isModule && !targetFileName.endsWith(".scss")) continue
+    if (checkFileName === lockedFileName) continue
     if (targetFileName === lockedFileName) continue
     if (EXCLUDED_FILE_NAMES.includes(targetFileName)) continue
 
     const content = fs.readFileSync(targetFile, 'utf-8')
-    const result = new RegExp(`\\b${lockedFileName}\\b`).test(content)
+    let result = false
+    if (isModule) {
+        result = new RegExp(`(import)|(use)\\b_?${lockedFileName}\\b`).test(content)
+
+    } else {
+        result = new RegExp(`\\b${lockedFileName}\\b`).test(content)
+    }
 
     if (result) {
       const checkAgain = new RegExp(`(".*?\\b${lockedFileName.replaceAll(".","\\.")}")|('.*?\\b${lockedFileName.replaceAll(".","\\.")}')`).test(content)
-      if (true) {
+      if (checkAgain) {
         console.log(`- found reference of "${lockedFileName}" in "${targetFileName}"`)
-        saveToLogs(`- found reference of "${lockedFileName}" in "${targetFileName}"`)
+        saveToLogs(`"${lockedFile}" => "${targetFile}"`)
         foundReference = true
         break
       }
