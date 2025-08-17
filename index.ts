@@ -21,6 +21,14 @@ try {
   process.exit(1)
 }
 
+const fileName = `Ununsed_${extArg}_files.txt`
+const saveToFile = (str: string) => {
+  fs.appendFile("./unused logs/"+fileName, [str, "\n"].join(), (err) => {
+    if (err) {
+      console.error('Error writing file:', err);
+    } 
+  });
+}
 console.log(`Searching for ${extArg} files...`)
 
 const lock_files = await fg( `**/*.${extArg}`, {
@@ -54,20 +62,28 @@ for (const targetFile of target_files) {
     if (EXCLUDED_FILE_NAMES.includes(targetFileName)) continue
 
     const content = fs.readFileSync(targetFile, 'utf-8')
-    const result = new RegExp(`(".*?\\b${lockedFileName.replaceAll(".","\\.")}")|('.*?\\b${lockedFileName.replaceAll(".","\\.")}')`).test(content)
+    const result = new RegExp(`\\b${lockedFileName}\\b`).test(content)
 
     if (result) {
-      console.log(`- found reference of "${lockedFileName}" in "${targetFileName}"`)
-      foundReference = true
-      break
+      const checkAgain = new RegExp(`(".*?\\b${lockedFileName.replaceAll(".","\\.")}")|('.*?\\b${lockedFileName.replaceAll(".","\\.")}')`).test(content)
+      if (checkAgain) {
+        console.log(`- found reference of "${lockedFileName}" in "${targetFileName}"`)
+        foundReference = true
+        break
+      }
     }
   }
   if (!foundReference) {
     console.log(`🚫 Unused: ${lockedFile}`)
     unusedFiles.push(lockedFileName)
+    saveToFile(lockedFileName)
   }
 }
 
-unusedFiles.forEach(u => {
-  console.log(`🚫 Unused: ${u}`)
-})
+if (unusedFiles.length === 0) {
+  console.log(`No unused ${extArg} files found!`)
+  process.exit()
+}
+
+console.log(`🚫 Unused files:`)
+unusedFiles.forEach(u => console.log(u))
