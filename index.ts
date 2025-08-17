@@ -12,7 +12,7 @@ if (!extArg || !address) {
 
 const EXCLUDED_FOLDER_NAMES = ['.git', '.idea', 'node_modules', 'bin']
 const EXCLUDED_FILE_NAMES = ['TahlildadehMvc.csproj', 'package.json', 'BundleConfigold2.cs', 'bundleConfigold.cs', 'BundleConfigold.cs']
-const target_file_extentions = ['scss', 'css', 'js', 'cs', 'cshtml']
+const target_file_extentions = ['scss', 'css', 'js', 'cs', 'cshtml', 'html']
 
 try {
   process.chdir(address)
